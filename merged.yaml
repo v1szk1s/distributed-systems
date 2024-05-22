@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: if-configmap
+data:
+  pb-url: http://if-pb-service:8090
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: if-secret
+type: Opaque
+data:
+  tmdb-api-key: ZXlKaGJHY2lPaUpJVXpJMU5pSjkuZXlKaGRXUWlPaUppWm1JMFptUXpPVE0yWWpVeU9UTTBZekptWWpkaE5XVmhOR00zWTJJNVppSXNJbk4xWWlJNklqWTJNalkxWkRZMU1UazNaR1UwTURFM1pESmpOekk1TmlJc0luTmpiM0JsY3lJNld5SmhjR2xmY21WaFpDSmRMQ0oyWlhKemFXOXVJam94ZlEuNHd3cDJ5VXZtc0JGS0ZsQUhZMFNNLUJMb0xmSGFSNXM0NHR1NkJaY3VuMA==
+  if-root-email: YUBhLmNvbQ==
+  if-root-password: YXNkZjEyMzQ1Ng==
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: if-pb-deployment
+  labels:
+    app: if-pb
+spec: 
+  replicas: 1
+  selector:
+    matchLabels:
+      app: if-pb
+  template:
+    metadata:
+      labels:
+        app: if-pb
+    spec: 
+      containers:
+      - name: if-pb 
+        image: v1szk1s/if_pb:2.0
+        ports:
+        - containerPort: 8090
+      #   volumeMounts:
+      #     - mountPath: /app/pb_data
+      #       name: volume
+      # volumes:
+      # - name: volume
+      #   hostPath:
+      #     path: /hostname/egyetem/6/interface_design/project/backend/pb_data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: if-pb-service
+spec: 
+  selector:
+    app: if-pb
+  ports:
+  - protocol: TCP
+    port: 8090 # this is the service port
+    targetPort: 8090 # this is the container port
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: if-frontend-deployment
+  labels:
+    app: if-frontend
+spec: 
+  replicas: 1
+  selector:
+    matchLabels:
+      app: if-frontend
+  template:
+    metadata:
+      labels:
+        app: if-frontend
+    spec: 
+      containers:
+      - name: if-frontend 
+        image: v1szk1s/if_frontend:debug
+        ports:
+        - containerPort: 3333
+        env:
+        - name: TMDB
+          valueFrom: 
+            secretKeyRef:
+              name: if-secret
+              key: tmdb-api-key
+        - name: EMAIL
+          valueFrom: 
+            secretKeyRef:
+              name: if-secret 
+              key: if-root-email
+        - name: PASSWD
+          valueFrom: 
+            secretKeyRef:
+              name: if-secret
+              key: if-root-password
+        - name: PB_URL
+          valueFrom:
+            configMapKeyRef:
+              name: if-configmap
+              key: pb-url
+        - name: ORIGIN
+          value: http://localhost:3333
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: if-frontend-service
+spec: 
+  selector:
+    app: if-frontend
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 3333 # this is the service port
+    targetPort: 3333 # this is the container port
+    nodePort: 30000
+
+
